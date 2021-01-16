@@ -14,7 +14,7 @@ const InlineChunkHtmlPlugin = require('react-dev-utils/InlineChunkHtmlPlugin');
 const ModuleNotFoundPlugin = require('react-dev-utils/ModuleNotFoundPlugin');
 const InterpolateHtmlPlugin = require('react-dev-utils/InterpolateHtmlPlugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CleanPlugin = require('clean-webpack-plugin');
+const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 
 /*
  * SplitChunksPlugin is enabled by default and replaced
@@ -72,8 +72,8 @@ console.log(publicFiles);
 module.exports = function (webpackEnv) {
 
     console.log(webpackEnv);
-    const isEnvDevelopment = webpackEnv === "development";
-    const isEnvProduction = webpackEnv === "production";
+    const isEnvDevelopment = !webpackEnv.production;
+    const isEnvProduction = !!webpackEnv.production;
     const homepage = require(resolveApp('package.json')).homepage;
     const publicPath = process.env.PUBLIC_URL
         || (homepage ? ensureSlash(url.parse(homepage).pathname) : "/");
@@ -95,29 +95,30 @@ module.exports = function (webpackEnv) {
         {
             loader: require.resolve("postcss-loader"),
             options: {
-                ident: 'postcss',
-                plugins: () => [
-                    require('postcss-flexbugs-fixes'),
-                    require('postcss-preset-env')({
-                        autoprefixer: {
-                            grid: true,
-                            flexbox: 'no-2009',
-                        },
-                        stage: 3
-                    }),
-                ]
+                postcssOptions: {
+                    plugins: [
+                        ['postcss-flexbugs-fixes'],
+                        ['postcss-preset-env', {
+                            autoprefixer: {
+                                grid: true,
+                                flexbox: 'no-2009',
+                            },
+                            stage: 3
+                        }],
+                    ],
+                },
             }
         },
         require.resolve('sass-loader'),
     ].filter(Boolean);
 
     return {
-        mode: webpackEnv,
+        mode: webpackEnv.production ? 'production' : 'development',
         devtool: isEnvProduction ? 'source-map' :
             isEnvDevelopment && 'cheap-source-map',
 
         plugins: [
-            new CleanPlugin(),
+            new CleanWebpackPlugin(),
             new HtmlWebpackPlugin({
                 inject: true,
                 template: resolveApp('public/index.html'),
@@ -143,10 +144,10 @@ module.exports = function (webpackEnv) {
             publicPath: publicPath,
             chunkFilename: isEnvProduction
                 ? "js/[name].[contenthash:8].chunk.js"
-                : isEnvDevelopment && '[name].chunk.js',
+                : isEnvDevelopment && 'js/[name].chunk.js',
             filename: isEnvProduction
                 ? "js/[name].[contenthash:8].js"
-                : isEnvDevelopment && 'main.js',
+                : isEnvDevelopment && 'js/[name].js',
         },
 
         devServer: {
@@ -197,8 +198,6 @@ module.exports = function (webpackEnv) {
                         }
                     },
                     parallel: !isWsl,
-                    cache: true,
-                    sourceMap: true,
                 }),
 
                 new OptimizeCSSAssetsPlugin({
